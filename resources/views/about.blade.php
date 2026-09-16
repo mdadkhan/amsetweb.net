@@ -1,0 +1,7 @@
+@extends('layouts.app', ['title' => 'About AMSET'])
+
+@section('content')
+    <header class="page-intro"><div class="shell"><p class="eyebrow">About AMSET</p><h1>Six decades of expertise in service.</h1><p>{{ $page?->summary ?? 'AMSET connects scientists, engineers, and technology professionals through education, collaboration, and public service.' }}</p></div></header>
+    <section class="section"><div class="shell content-layout"><div><p class="eyebrow">Executive team &amp; members</p><h2>People behind the mission</h2><div class="profile-grid">@forelse ($team as $person)<article class="profile"><h3>{{ $person->name }}</h3><p class="item-meta">{{ $person->role }}{{ $person->institution ? ' · '.$person->institution : '' }}</p><p>{{ $person->biography }}</p></article>@empty<p>Team profiles are being prepared.</p>@endforelse</div></div><aside class="section-index"><strong>About AMSET</strong><a href="#history">History at a glance</a><a href="{{ route('scientists') }}">Eminent scientists</a><a href="{{ route('contact.create') }}">Membership</a></aside></div></section>
+    <section class="section history-band" id="history"><div class="shell"><p class="eyebrow">AMSE to AMSET</p><h2>History at a glance</h2><div class="full-timeline">@foreach ($timeline as $event)<article><span>{{ $event->year }}</span><div><h3>{{ $event->title }}</h3><p>{{ $event->description }}</p></div></article>@endforeach</div></div></section>
+@endsection
