@@ -57,6 +57,19 @@ class PaymentFinalizer
 
     private function activateMembership(Member $member): void
     {
+        // Lifetime plans are a one-time registration fee and never expire.
+        if ($member->membershipPlan?->billing_interval === 'lifetime') {
+            $member->update([
+                'status' => 'active',
+                'joined_at' => $member->joined_at ?? now(),
+                'last_renewed_at' => now(),
+                'expires_at' => null,
+                'renewal_reminder_sent' => false,
+            ]);
+
+            return;
+        }
+
         $expires = $member->expires_at && $member->expires_at->isFuture() ? $member->expires_at : now();
 
         $member->update([

@@ -131,6 +131,28 @@ class MembershipEventsDonationsTest extends TestCase
         $this->assertDatabaseHas('payments', ['amount' => 19.5]);
     }
 
+    public function test_cancel_lapsed_memberships_command_cancels_only_active_members_past_expiration(): void
+    {
+        $lapsed = Member::query()->create([
+            'first_name' => 'Lapsed', 'last_name' => 'Member', 'email' => 'lapsed@example.com',
+            'membership_number' => 'AMSET-LAPSED', 'status' => 'active', 'expires_at' => now()->subDay(),
+        ]);
+        $current = Member::query()->create([
+            'first_name' => 'Current', 'last_name' => 'Member', 'email' => 'current@example.com',
+            'membership_number' => 'AMSET-CURRENT', 'status' => 'active', 'expires_at' => now()->addMonth(),
+        ]);
+        $alreadyCancelled = Member::query()->create([
+            'first_name' => 'Already', 'last_name' => 'Cancelled', 'email' => 'already@example.com',
+            'membership_number' => 'AMSET-CANCELLED', 'status' => 'cancelled', 'expires_at' => now()->subYear(),
+        ]);
+
+        $this->artisan('amset:cancel-lapsed-memberships')->assertSuccessful();
+
+        $this->assertSame('cancelled', $lapsed->fresh()->status);
+        $this->assertSame('active', $current->fresh()->status);
+        $this->assertSame('cancelled', $alreadyCancelled->fresh()->status);
+    }
+
     public function test_membership_directory_only_shows_active_members(): void
     {
         Member::query()->create(['first_name' => 'Active', 'last_name' => 'Member', 'email' => 'active@example.com', 'membership_number' => 'AMSET-1', 'status' => 'active']);

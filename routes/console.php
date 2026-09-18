@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('amset:send-renewal-reminders')->daily();
+Schedule::command('amset:cancel-lapsed-memberships')->weekly();

@@ -11,7 +11,7 @@
                     <select name="membership_plan_id" id="membership-plan" required>
                         <option value="">Select a plan&hellip;</option>
                         @foreach ($plans as $plan)
-                            <option value="{{ $plan->id }}" data-fee="{{ number_format($plan->fee(), 2, '.', '') }}" @selected(old('membership_plan_id') == $plan->id)>{{ $plan->name }} &mdash; ${{ number_format($plan->fee(), 2) }}/{{ $plan->billing_interval }}</option>
+                            <option value="{{ $plan->id }}" data-fee="{{ number_format($plan->fee(), 2, '.', '') }}" @selected(old('membership_plan_id') == $plan->id)>{{ $plan->name }} &mdash; ${{ number_format($plan->fee(), 2) }}{{ $plan->billing_interval === 'lifetime' ? ' (one-time)' : '/'.$plan->billing_interval }}</option>
                         @endforeach
                     </select>
                     @error('membership_plan_id')<small>{{ $message }}</small>@enderror

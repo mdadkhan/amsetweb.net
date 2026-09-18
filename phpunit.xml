@@ -32,5 +32,7 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- Prevent a developer's local .env (e.g. PAYMENTS_FAKE_GATEWAYS=true) from leaking into the suite -->
+        <env name="PAYMENTS_FAKE_GATEWAYS" value="false"/>
     </php>
 </phpunit>

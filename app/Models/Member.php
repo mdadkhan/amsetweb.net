@@ -62,4 +62,11 @@ class Member extends Model
             ->whereNotNull('expires_at')
             ->whereBetween('expires_at', [now()->toDateString(), now()->addDays($days)->toDateString()]);
     }
+
+    public function scopeLapsed(Builder $query, int $graceDays = 0): Builder
+    {
+        return $query->where('status', 'active')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<', now()->subDays($graceDays)->toDateString());
+    }
 }

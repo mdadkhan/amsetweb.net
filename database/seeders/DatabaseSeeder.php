@@ -121,19 +121,19 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $annualPlan = MembershipPlan::query()->updateOrCreate(['slug' => 'individual-annual'], [
-            'name' => 'Individual Annual',
-            'description' => 'Standard annual membership for individuals.',
+            'name' => 'Individual Membership',
+            'description' => 'One-time registration fee for individual membership.',
             'price' => config('payments.membership_fees.individual-annual'),
-            'billing_interval' => 'yearly',
+            'billing_interval' => 'lifetime',
             'sort_order' => 1,
             'is_active' => true,
         ]);
 
         MembershipPlan::query()->updateOrCreate(['slug' => 'student-annual'], [
-            'name' => 'Student Annual',
-            'description' => 'Discounted annual membership for full-time students.',
+            'name' => 'Student Membership',
+            'description' => 'One-time discounted registration fee for full-time students.',
             'price' => config('payments.membership_fees.student-annual'),
-            'billing_interval' => 'yearly',
+            'billing_interval' => 'lifetime',
             'sort_order' => 2,
             'is_active' => true,
         ]);
