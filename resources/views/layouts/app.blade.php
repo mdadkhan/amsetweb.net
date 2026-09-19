@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="description" content="AMSET connects Muslim scientists, engineers, and technology professionals through advocacy, education, and service.">
         <title>{{ $title ?? 'AMSET' }}</title>
+        <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">

@@ -30,6 +30,14 @@ class TransferSqliteToMysql extends Command
         'conferences',
         'galleries',
         'gallery_items',
+        'membership_plans',
+        'members',
+        'events',
+        'event_tickets',
+        'event_registrations',
+        'donation_campaigns',
+        'donations',
+        'payments',
     ];
 
     public function handle(): int

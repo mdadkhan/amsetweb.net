@@ -16,7 +16,9 @@
 !/.tools/README.txt
 /auth.json
 /database/*.sqlite
+/storage/app/private/hostgator-import.sql
 /node_modules
+/build
 /public/build
 /public/css/filament
 /public/fonts-manifest.dev.json
