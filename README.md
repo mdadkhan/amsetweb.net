@@ -333,7 +333,6 @@ The automated test suite verifies command registration, required configuration, 
 | `bootstrap/` | Laravel startup configuration, provider registration, and generated framework cache files. |
 | `config/` | Application configuration for authentication, database, mail, queues, sessions, filesystems, and AMSET-specific settings. Values normally come from `.env`. |
 | `database/` | Database migrations, factories, seeders, and the ignored local SQLite database. Migrations remain portable between SQLite and MySQL. |
-| `docs/` | Supporting developer and deployment documentation. |
 | `node_modules/` | Generated frontend dependencies installed by npm. Do not edit or deploy this folder directly. |
 | `public/` | Web server document root containing `index.php`, built Vite assets, Filament assets, images, fonts, and other publicly accessible files. |
 | `resources/` | Source Blade templates, CSS, and JavaScript compiled or rendered by Laravel and Vite. |
@@ -378,26 +377,38 @@ Generated folders such as `vendor/`, `node_modules/`, `public/build/`, and frame
 
 ## Local Development
 
-Detailed platform instructions are in [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md).
+The project uses Laravel 13 with PHP 8.3 or newer. Local development uses SQLite; production uses MySQL. The application code and migrations are shared across both environments.
 
-### First-Time Setup
+### Automated Setup
 
-macOS:
+The setup scripts install project-local Composer and Node.js 22 under `.tools/`, install dependencies, configure SQLite, run migrations, and build frontend assets. Re-running either script is safe: compatible tools and existing environment values are preserved.
+
+#### macOS
 
 ```bash
 ./scripts/setup-macos.sh
+.tools/bin/amset .tools/bin/php artisan serve
 ```
 
-Windows PowerShell:
+PHP 8.3 is installed with Homebrew because PHP does not publish a portable macOS binary. Node.js, Composer, wrappers, downloads, and caches remain inside `.tools/`. On older Intel Macs, Homebrew may need to compile dependencies and request confirmation.
+
+#### Windows
+
+From PowerShell:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\setup-windows.ps1
+.\.tools\bin\php.cmd artisan serve
 ```
 
-The setup scripts create `.env` when absent, prepare SQLite, install dependencies, generate the application key when needed, apply migrations, and build assets. They preserve an existing `.env` file.
+The Windows script installs portable PHP 8.3, Node.js 22, Composer, wrappers, and caches under `.tools/`. It does not modify the machine PATH.
+
+Open `http://localhost:8000` after starting Laravel. For frontend development, run `npm run dev` in a second terminal using the project-local Node executable.
 
 ### Build and Launch
+
+After the initial setup, one command installs locked dependencies, applies pending SQLite migrations, builds production assets, and starts the local server:
 
 macOS:
 
@@ -411,23 +422,37 @@ Windows PowerShell:
 .\scripts\start-local.ps1
 ```
 
-The launch scripts install current dependencies, migrate SQLite, build production assets, stop an existing listener on the selected port, and start Laravel. The default URL is `http://127.0.0.1:8000`.
-
-Use a different port or run a nondisruptive build check:
+The default URL is `http://127.0.0.1:8000`. Before launch, the script stops any process already listening on the selected port. Override the port when you need to keep that process running:
 
 ```bash
-./scripts/start-local.sh --port=8001
-./scripts/start-local.sh --check
+./scripts/start-local.sh --host=127.0.0.1 --port=8001
 ```
 
 ```powershell
-.\scripts\start-local.ps1 -Port 8001
-.\scripts\start-local.ps1 -CheckOnly
+.\scripts\start-local.ps1 -HostAddress 127.0.0.1 -Port 8001
 ```
 
-Check mode does not stop or launch a server.
+Use `--check` on macOS or `-CheckOnly` on Windows to run the complete build without launching the long-running server.
 
-### Common Commands
+### Daily Commands
+
+macOS:
+
+```bash
+.tools/bin/amset .tools/bin/php artisan serve
+.tools/bin/amset npm run dev
+.tools/bin/amset .tools/bin/php artisan test
+```
+
+Windows PowerShell:
+
+```powershell
+.\.tools\bin\php.cmd artisan serve
+.\.tools\node\npm.cmd run dev
+.\.tools\bin\php.cmd artisan test
+```
+
+Common commands:
 
 ```bash
 php artisan migrate
@@ -439,6 +464,16 @@ vendor/bin/pint
 npm run dev
 npm run build
 ```
+
+### Local SQLite
+
+`.env.example` selects SQLite and the setup scripts create `database/database.sqlite`. Reset local data with:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+This command deletes all local database records. Do not run it in production.
 
 ### Administration And Sample Content
 
@@ -458,14 +493,162 @@ php artisan amset:import-wordpress
 
 The importer allowlists legitimate AMSET sections and categories, sanitizes imported HTML, and upserts by slug. It excludes WordPress authentication/plugin pages and unrelated or suspicious posts instead of copying the legacy database blindly.
 
+### Troubleshooting
+
+- Confirm the active runtime with `php -v`, `php -m`, `node --version`, and `composer --version` through the `.tools/bin` wrappers.
+- If Vite reports a missing native binding, remove generated `node_modules` and `package-lock.json`, rerun the setup script, and confirm Node is at least 22.12.
+- If Laravel reports a missing Vite manifest, run `npm run build`.
+- Ensure `storage/` and `bootstrap/cache/` are writable.
+- Mail is logged locally. Production SMTP values belong only in the production environment.
+
+### Production MySQL
+
+Copy `.env.production.example` to a secure environment outside source control and provide real values for:
+
+```dotenv
+DB_CONNECTION=mysql
+DB_HOST=your-database-host
+DB_PORT=3306
+DB_DATABASE=your-database-name
+DB_USERNAME=your-database-user
+DB_PASSWORD=your-secret-password
+```
+
+Do not upload `.env`, `.tools/`, `node_modules/`, or `database/database.sqlite`. On the production host, install dependencies, inject environment variables, and run:
+
+```bash
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+php artisan config:clear
+php artisan migrate --force
+php artisan storage:link
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+Back up MySQL before migrations. Run the migration and test suite against a disposable MySQL database in staging before the first production release. The SQLite file is not converted or uploaded; content moves through migrations, seeders, and the WordPress importer.
+
 ## Environment Files
 
-- `.env.example` contains safe SQLite development defaults.
-- `.env.production.example` documents required production values without secrets.
-- `.env` contains machine-specific configuration and is ignored by Git.
-- `database/database.sqlite` contains local data and is ignored by Git.
+The application uses `.env` files to manage environment-specific configuration. Files are not committed to Git; configuration values are injected at runtime.
 
-Never commit application keys, database credentials, mail credentials, payment secrets, or production data.
+### Development Environment (.env)
+
+Copy `.env.example` to `.env` for local development. The setup scripts create this automatically:
+
+```dotenv
+APP_NAME=AMSET
+APP_ENV=local
+APP_KEY=                    # Generated by setup scripts
+APP_DEBUG=true              # Enable debug mode and error details
+APP_URL=http://localhost:8000
+
+DB_CONNECTION=sqlite        # Use embedded SQLite locally
+# DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD not needed for SQLite
+
+LOG_CHANNEL=stack
+LOG_LEVEL=debug             # Verbose logging for development
+
+CACHE_STORE=database        # Optional: use database caching
+QUEUE_CONNECTION=database   # Database-backed queue for local testing
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+
+MAIL_MAILER=log             # Log emails instead of sending (check storage/logs/laravel.log)
+MAIL_FROM_ADDRESS=local@amsetweb.test
+
+AMSET_ADMIN_EMAIL=admin@amsetweb.test
+AMSET_ADMIN_PASSWORD=ChangeMe!123
+
+# Optional: Override these to test SQLite→MySQL migration locally
+# MYSQL_IMPORT_HOST=127.0.0.1
+# MYSQL_IMPORT_PORT=3306
+# MYSQL_IMPORT_DATABASE=
+# MYSQL_IMPORT_USERNAME=
+# MYSQL_IMPORT_PASSWORD=
+```
+
+**Key development settings:**
+- `APP_ENV=local` and `APP_DEBUG=true` enable detailed error pages and logging
+- `DB_CONNECTION=sqlite` uses the embedded `database/database.sqlite` file
+- `MAIL_MAILER=log` logs emails to `storage/logs/` instead of sending them
+- `LOG_LEVEL=debug` captures verbose application events
+- Database queue allows testing queued jobs without a background worker
+
+### Production Environment (.env.production)
+
+Copy `.env.production.example` to a secure environment outside source control and inject real values. This file is never committed:
+
+```dotenv
+APP_NAME=AMSET
+APP_ENV=production          # Critical: enable production mode
+APP_KEY=                    # Inject via environment variable or secure vault
+APP_DEBUG=false             # NEVER enable debug in production
+APP_URL=https://amsetweb.net  # Your live domain
+
+# Database: MySQL only (never SQLite in production)
+DB_CONNECTION=mysql
+DB_HOST=your-db-host        # Inject securely (no hardcoded credentials)
+DB_PORT=3306
+DB_DATABASE=amset
+DB_USERNAME=amset           # Use principle of least privilege
+DB_PASSWORD=secure-password # Inject from secrets manager
+
+LOG_CHANNEL=stack
+LOG_LEVEL=warning           # Only log important events
+
+CACHE_STORE=database        # Consider Redis or file-based caching for performance
+QUEUE_CONNECTION=database   # Consider Redis for high-volume queues
+
+SESSION_DRIVER=database
+SESSION_ENCRYPT=true        # Encrypt session data in database
+
+MAIL_MAILER=smtp            # Use real SMTP provider
+MAIL_HOST=mail.example.com
+MAIL_PORT=587
+MAIL_USERNAME=noreply@example.com
+MAIL_PASSWORD=app-password  # Use app-specific password, not user password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=info@amsetweb.net
+MAIL_FROM_NAME="AMSET"
+
+AMSET_CONTACT_EMAIL=info@amsetweb.net
+```
+
+**Key production settings:**
+- `APP_ENV=production` and `APP_DEBUG=false` disable error details and debug toolbar
+- `DB_CONNECTION=mysql` uses MySQL (created via migrations, never uploaded from SQLite)
+- `MAIL_MAILER=smtp` sends real emails via SMTP provider
+- `SESSION_ENCRYPT=true` protects session data
+- Credentials are **never hardcoded**; inject via:
+  - Environment variables set by hosting platform
+  - Secrets manager (AWS Secrets Manager, Vault, etc.)
+  - Secure .env file created on the production server during deployment
+
+### Configuration Checklist
+
+| Setting | Development | Production | Notes |
+| --- | --- | --- | --- |
+| `APP_ENV` | `local` | `production` | Controls Laravel behavior and error handling |
+| `APP_DEBUG` | `true` | `false` | Never expose stack traces in production |
+| `DB_CONNECTION` | `sqlite` | `mysql` | SQLite not suitable for production traffic |
+| `MAIL_MAILER` | `log` | `smtp` | Emails logged locally, sent via SMTP in production |
+| `LOG_LEVEL` | `debug` | `warning` | Verbose local logging, minimal production logging |
+| `CACHE_STORE` | `database` | `database` or `redis` | Database sufficient for small deployments |
+| `SESSION_ENCRYPT` | `false` | `true` | Encrypt sensitive session data in production |
+| Credentials | Safe defaults (test user) | Injected securely | Never commit real credentials |
+
+### Important Security Notes
+
+- **Never commit `.env`** — it contains secrets and is in `.gitignore`
+- **Never hardcode credentials** — use environment variables, secrets managers, or secure vaults
+- **Never deploy SQLite** — it's local-only; production uses MySQL
+- **Never enable debug in production** — it exposes sensitive paths and configuration
+- **Rotate credentials regularly** — database passwords, API keys, SMTP passwords
+- **Use strong passwords** — at least 16 characters for database and application users
+- **Inject secrets safely** — use your platform's secrets manager (not plaintext .env files)
 
 ## Deployment Outline
 
